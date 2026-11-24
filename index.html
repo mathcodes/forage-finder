@@ -35,6 +35,40 @@ button.alt{background:#24332a}
 .leaflet-popup-content h3{margin-bottom:4px}
 .warn{color:#b03a2e}
 .note{font-size:11px;color:#8a9a86;padding:12px 16px}
+h2{font-size:14px;color:#9fd88a;margin-bottom:4px}
+.hint{font-size:11px;color:#8a9a86;margin-bottom:10px}
+#people{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pcard{background:#0f1610;border:1px solid #2a3a2c;border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;transition:border-color .15s}
+.pcard:hover{border-color:#9fd88a}
+.pcard img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#24332a;display:block;margin:0 auto 6px}
+.pcard b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard span{font-size:10px;color:#8a9a86}
+.rank{font-size:10px;color:#c9b56a}
+#profile{position:fixed;inset:0;background:#10160f;z-index:2000;overflow-y:auto;display:none}
+#profile.open{display:block}
+.pwrap{max-width:860px;margin:0 auto;padding:20px}
+.back{margin-bottom:18px}
+.phead{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.phead img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid #2f6b3a;background:#24332a}
+.phead h1{padding:0;font-size:26px}
+.phead .login{color:#8a9a86;font-size:14px}
+.badges span{display:inline-block;font-size:11px;background:#24332a;border-radius:10px;padding:2px 8px;margin:6px 6px 0 0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:#18221a;border:1px solid #2a3a2c;border-radius:8px;padding:12px;text-align:center}
+.stat b{display:block;font-size:20px;color:#9fd88a}
+.stat span{font-size:11px;color:#8a9a86}
+.section{background:#18221a;border:1px solid #2a3a2c;border-radius:8px;padding:16px;margin-bottom:16px}
+.section h3{font-size:14px;color:#9fd88a;margin-bottom:10px}
+.bio{font-size:14px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word}
+.bio a,.links a,.leaflet-popup-content a.who{color:#9fd88a}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{display:inline-block;background:#24332a;border-radius:6px;padding:6px 10px;font-size:13px;text-decoration:none}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.sp{background:#0f1610;border-radius:8px;overflow:hidden;font-size:12px}
+.sp img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#24332a}
+.sp div{padding:6px}
+.sp span{color:#8a9a86}
+@media(max-width:700px){#people{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){#app{flex-direction:column}#side{width:100%;min-width:0;max-height:45%}}
 </style>
 </head>
@@ -56,10 +90,16 @@ button.alt{background:#24332a}
 <div class="row" style="margin-bottom:8px"><button id="all" class="alt">All</button><button id="none" class="alt">None</button><button id="season" class="alt">In season</button></div>
 <div id="list"></div>
 </div>
+<div class="box">
+<h2>🧑‍🌾 Top foragers nearby</h2>
+<div class="hint">The people who logged the most of these plants in your search area. Tap one for their profile.</div>
+<div id="people"><div class="hint">Search a location to see them.</div></div>
+</div>
 <div class="note">Never eat anything you haven't positively identified. Check land rules: most state and city parks prohibit foraging, while NC game lands allow personal-use picking. A sighting shows where a plant was seen, not permission to pick.</div>
 </div>
 <div id="map"></div>
 </div>
+<div id="profile"><div class="pwrap" id="pbody"></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const ITEMS=[
@@ -97,6 +137,8 @@ async function load(lat,lng,label){
   circle=L.circle([lat,lng],{radius:r*1000,color:'#9fd88a',weight:1,fillOpacity:0.04}).addTo(map);
   map.fitBounds(circle.getBounds());
   status('Loading sightings…');
+  lastSearch={lat,lng,r};
+  const tally={};
   let total=0;
   await Promise.all(ITEMS.map(async it=>{
     layers[it.id].clearLayers();
@@ -109,12 +151,82 @@ async function load(lat,lng,label){
       obs.forEach(o=>{
         const [lo,la]=o.geojson.coordinates;
         const sp=o.taxon&&o.taxon.preferred_common_name?o.taxon.preferred_common_name:it.name;
-        L.marker([la,lo],{icon:icon(it.emoji)}).bindPopup(`<h3>${it.emoji} ${it.name}</h3><i>${sp}</i><br><b>Season:</b> ${it.season}<br><b>Use:</b> ${it.part}<br><b>ID:</b> ${it.idtip}<br><span class="warn"><b>Lookalike:</b> ${it.look}</span><br><b>Difficulty:</b> ${it.diff}<br><b>Seen:</b> ${o.observed_on||'unknown'}${o.obscured?' (location obscured)':''}<br><a href="https://www.inaturalist.org/observations/${o.id}" target="_blank" rel="noopener">View on iNaturalist</a>`).addTo(layers[it.id]);
+        const u=o.user;let who='';
+        if(u){
+          const t=tally[u.id]||(tally[u.id]={user:u,count:0,items:new Set()});
+          t.count++;t.items.add(it.emoji);
+          who=`<b>By:</b> <a href="#user/${u.id}" class="who">${esc(u.name||u.login)}</a><br>`;
+        }
+        L.marker([la,lo],{icon:icon(it.emoji)}).bindPopup(`<h3>${it.emoji} ${it.name}</h3><i>${sp}</i><br>${who}<b>Season:</b> ${it.season}<br><b>Use:</b> ${it.part}<br><b>ID:</b> ${it.idtip}<br><span class="warn"><b>Lookalike:</b> ${it.look}</span><br><b>Difficulty:</b> ${it.diff}<br><b>Seen:</b> ${o.observed_on||'unknown'}${o.obscured?' (location obscured)':''}<br><a href="https://www.inaturalist.org/observations/${o.id}" target="_blank" rel="noopener">View on iNaturalist</a>`).addTo(layers[it.id]);
       });
     }catch(err){ct.textContent='!';}
   }));
   status(`${total} sightings within ${r} km of ${label||'your location'}.`);
+  renderPeople(Object.values(tally).sort((a,b)=>b.count-a.count).slice(0,9));
 }
+let lastSearch=null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const avatar=(url,size)=>url?url.replace(/\/(thumb|small|medium)\./,`/${size}.`):'https://static.inaturalist.org/attachment_defaults/users/icons/defaults/thumb.png';
+function renderPeople(top){
+  const el=document.getElementById('people');
+  if(!top.length){el.innerHTML='<div class="hint">No observers found here yet.</div>';return;}
+  el.innerHTML=top.map((t,i)=>`<div class="pcard" onclick="location.hash='user/${t.user.id}'">
+    <img src="${esc(avatar(t.user.icon_url,'medium'))}" alt="" loading="lazy">
+    <b>${esc(t.user.name||t.user.login)}</b>
+    <span class="rank">#${i+1}</span> <span>${t.count} finds</span><br><span>${[...t.items].join(' ')}</span></div>`).join('');
+}
+function linkify(text){
+  return esc(text).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+function extractLinks(text,site){
+  const found=new Set();
+  if(site)found.add(site.startsWith('http')?site:'https://'+site);
+  (String(text||'').match(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g)||[]).forEach(u=>found.add(u));
+  const handle=String(text||'').match(/(?:instagram|ig|insta)\s*[:@-]?\s*@?([A-Za-z0-9_.]{2,30})/i);
+  if(handle)found.add('https://instagram.com/'+handle[1]);
+  return [...found].map(u=>{let label=u;try{const h=new URL(u).hostname.replace(/^www\./,'');label=({'instagram.com':'📷 Instagram','youtube.com':'▶️ YouTube','youtu.be':'▶️ YouTube','facebook.com':'👍 Facebook','x.com':'𝕏 X','twitter.com':'𝕏 X','tiktok.com':'🎵 TikTok','linkedin.com':'💼 LinkedIn','github.com':'💻 GitHub','orcid.org':'🎓 ORCID'})[h]||('🔗 '+h);}catch(e){}return {u,label};});
+}
+const fmtDate=d=>d?new Date(d).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}):'unknown';
+const fmtNum=n=>(n||0).toLocaleString();
+async function openProfile(id){
+  const box=document.getElementById('profile'),body=document.getElementById('pbody');
+  box.classList.add('open');box.scrollTop=0;
+  body.innerHTML='<button class="alt back" onclick="closeProfile()">← Back to map</button><div class="hint">Loading profile…</div>';
+  try{
+    const js=await (await fetch(`https://api.inaturalist.org/v1/users/${id}`)).json();
+    const u=(js.results||[])[0];if(!u)throw 0;
+    const years=Math.max(0,((Date.now()-new Date(u.created_at))/31557600000)).toFixed(1);
+    const roles=(u.roles||[]).map(r=>`<span>⭐ ${esc(r)}</span>`).join('');
+    const links=extractLinks(u.description,(typeof u.site==='string'&&u.site.includes('.'))?u.site:null);
+    if(u.orcid)links.push({u:u.orcid,label:'🎓 ORCID'});
+    links.push({u:`https://www.inaturalist.org/people/${encodeURIComponent(u.login)}`,label:'🌿 iNaturalist profile'});
+    body.innerHTML=`<button class="alt back" onclick="closeProfile()">← Back to map</button>
+    <div class="phead"><img src="${esc(avatar(u.icon_url,'large'))}" alt="">
+      <div><h1>${esc(u.name||u.login)}</h1><div class="login">@${esc(u.login)}</div>
+      <div class="badges"><span>📅 Joined ${fmtDate(u.created_at)}</span><span>⏳ ${years} yrs on iNaturalist</span>${roles}</div></div></div>
+    <div class="stats">
+      <div class="stat"><b>${fmtNum(u.observations_count)}</b><span>Observations</span></div>
+      <div class="stat"><b>${fmtNum(u.species_count)}</b><span>Species</span></div>
+      <div class="stat"><b>${fmtNum(u.identifications_count)}</b><span>IDs for others</span></div>
+      <div class="stat"><b>${fmtNum(u.journal_posts_count)}</b><span>Journal posts</span></div>
+    </div>
+    <div class="section"><h3>About</h3><div class="bio">${u.description?linkify(u.description):'<span class="hint">No bio provided.</span>'}</div></div>
+    <div class="section"><h3>Links</h3><div class="links">${links.map(l=>`<a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join('')}</div></div>
+    <div class="section"><h3>${lastSearch?'Most observed species near your search':'Most observed species'}</h3><div class="gallery" id="gal"><div class="hint">Loading…</div></div></div>`;
+    const geo=lastSearch?`&lat=${lastSearch.lat}&lng=${lastSearch.lng}&radius=${lastSearch.r}`:'';
+    const sc=await (await fetch(`https://api.inaturalist.org/v1/observations/species_counts?user_id=${id}${geo}&per_page=12`)).json();
+    const gal=document.getElementById('gal');
+    gal.innerHTML=(sc.results||[]).map(s=>{const t=s.taxon||{};const ph=t.default_photo?t.default_photo.square_url.replace('square','medium'):'';
+      return `<a class="sp" href="https://www.inaturalist.org/taxa/${t.id}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">${ph?`<img src="${esc(ph)}" alt="" loading="lazy">`:'<img alt="">'}<div><b>${esc(t.preferred_common_name||t.name)}</b><br><span>${s.count} sightings</span></div></a>`;}).join('')||'<div class="hint">No species found.</div>';
+  }catch(e){body.innerHTML='<button class="alt back" onclick="closeProfile()">← Back to map</button><div class="hint">Couldn\'t load this profile. Try again.</div>';}
+}
+function closeProfile(){history.pushState('',document.title,location.pathname+location.search);route();}
+function route(){
+  const m=location.hash.match(/^#user\/(\d+)/);
+  if(m)openProfile(m[1]);else{document.getElementById('profile').classList.remove('open');setTimeout(()=>map.invalidateSize(),50);}
+}
+window.addEventListener('hashchange',route);
+route();
 async function search(){
   const q=document.getElementById('q').value.trim();if(!q)return;
   status('Finding location…');
