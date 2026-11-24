@@ -44,6 +44,16 @@ th{background:#1d2b20;color:#9fd88a;font-weight:600}
 tr:last-child td{border-bottom:none}
 .check{columns:2;font-size:14px;color:#c3d1bf;background:#18221a;border:1px solid #2a3a2c;border-radius:10px;padding:14px 16px 14px 34px}
 .check li{margin-bottom:4px;break-inside:avoid}
+.roster{background:#18221a;border:1px solid #2a3a2c;border-radius:12px;padding:16px;margin-bottom:18px}
+.rhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.rhead h2{margin:0}
+.count{font-size:13px;color:#c9b56a}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.person{display:flex;align-items:center;gap:10px;background:#0f1610;border:1px solid #223024;border-radius:8px;padding:8px 10px}
+.av{width:34px;height:34px;border-radius:50%;background:#2f6b3a;color:#e6eee2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.person b{display:block;font-size:13px}
+.person span{font-size:11px;color:#8a9a86}
+.empty{font-size:13px;color:#8a9a86}
 .src{font-size:12px;color:#8a9a86;margin-top:30px;border-top:1px solid #2a3a2c;padding-top:14px}
 .src a{color:#8fb884}
 @media(max-width:640px){h1{font-size:24px}.grid{grid-template-columns:1fr}.check{columns:1}table{font-size:12px}th,td{padding:7px 8px}}
@@ -53,7 +63,8 @@ tr:last-child td{border-bottom:none}
 <div class="wrap">
 <div class="top">
 <a class="btn alt" href="./">← Back to the map</a>
-<a class="btn" href="./?q=Carolina%20Beach%2C%20NC">🗺️ See sightings near Carolina Beach</a>
+<a class="btn" href="join.html">✍️ Join the hike</a>
+<a class="btn alt" href="./?q=Carolina%20Beach%2C%20NC">🗺️ See sightings near Carolina Beach</a>
 </div>
 
 <div class="hero">
@@ -61,6 +72,11 @@ tr:last-child td{border-bottom:none}
 <h1>🌿 Carolina Beach &amp; Kure Beach Forage Walk</h1>
 <p>A relaxed coastal day with the family: two easy trails, a lunch break, and a lot of plant spotting. It's flat, sandy, and good for all ages.</p>
 <div class="chips"><span>🥾 About 5.5 miles total</span><span>⏱️ Around 5 hours with lunch</span><span>📈 Flat and easy</span><span>💵 Free day use</span><span>🐕 Leashed pets OK</span></div>
+</div>
+
+<div class="roster" id="roster">
+<div class="rhead"><div><h2>🙋 Who's coming Sunday</h2><div class="count" id="rcount">Loading…</div></div><a class="btn" href="join.html">✍️ Sign up</a></div>
+<div class="people" id="people"><div class="empty">Loading the list…</div></div>
 </div>
 
 <div class="alert"><b>⚠️ Look, don't pick, on these trails.</b> Carolina Beach State Park and Fort Fisher are both NC state park land, where state rules protect plants from removal. Treat today as an ID safari: photograph everything and log it to iNaturalist. Never touch the Venus flytraps. Poaching them is a felony in North Carolina. For actual harvesting, see the <a href="#harvest">legal picking options</a> below.</div>
@@ -163,5 +179,27 @@ tr:last-child td{border-bottom:none}
 <a href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>
 </div>
 </div>
+<script>
+(async()=>{
+  const el=document.getElementById('people'),ct=document.getElementById('rcount');
+  try{
+    const d=await (await fetch('sunday.json?t='+Date.now(),{cache:'no-store'})).json();
+    const list=(d.attendees||[]).slice().sort((a,b)=>String(a.joined).localeCompare(String(b.joined)));
+    ct.textContent=list.length?`${list.length} ${list.length===1?'person':'people'} signed up`:'No one yet. Be the first!';
+    if(!list.length){el.innerHTML='<div class="empty">The list is empty. Tap Sign up to add yourself.</div>';return;}
+    el.innerHTML='';
+    list.forEach(p=>{
+      const name=((p.first||'')+' '+(p.last||'')).trim()||p.username;
+      const ini=((p.first||'?')[0]+(p.last||'')[0]||'').toUpperCase();
+      const row=document.createElement('div');row.className='person';
+      const av=document.createElement('div');av.className='av';av.textContent=ini;
+      const info=document.createElement('div');
+      const b=document.createElement('b');b.textContent=name;
+      const sp=document.createElement('span');sp.textContent='@'+(p.username||'');
+      info.append(b,sp);row.append(av,info);el.appendChild(row);
+    });
+  }catch(e){ct.textContent='';el.innerHTML='<div class="empty">Couldn\'t load the list right now.</div>';}
+})();
+</script>
 </body>
 </html>
