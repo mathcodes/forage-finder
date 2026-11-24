@@ -77,6 +77,7 @@ h2{font-size:14px;color:#9fd88a;margin-bottom:4px}
 <div id="side">
 <h1>🌿 Forage Finder</h1>
 <div class="sub">Real research-grade sightings from iNaturalist near any location.</div>
+<a href="hike.html" style="display:block;margin:0 16px 12px;padding:10px 12px;background:#2a2414;border:1px solid #6b5a2a;border-radius:8px;color:#e8cf7a;text-decoration:none;font-size:13px">🥾 <b>Sunday hike plan:</b> Carolina Beach &amp; Kure Beach →</a>
 <div class="box">
 <input id="q" placeholder="City or address, e.g. Wilmington, NC">
 <div class="row">
@@ -227,6 +228,8 @@ function route(){
 }
 window.addEventListener('hashchange',route);
 route();
+const qp=new URLSearchParams(location.search).get('q');
+if(qp){document.getElementById('q').value=qp;search();}
 async function search(){
   const q=document.getElementById('q').value.trim();if(!q)return;
   status('Finding location…');
