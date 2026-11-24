@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forage Finder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#10160f;color:#e6eee2}
+#app{display:flex;height:100%}
+#side{width:330px;min-width:330px;background:#18221a;border-right:1px solid #2a3a2c;display:flex;flex-direction:column;overflow-y:auto}
+#map{flex:1}
+h1{font-size:18px;padding:16px 16px 4px;color:#9fd88a}
+.sub{font-size:12px;color:#8a9a86;padding:0 16px 12px}
+.box{padding:12px 16px;border-top:1px solid #2a3a2c}
+input,select,button{font:inherit;font-size:14px;border-radius:6px;border:1px solid #33463a;background:#0f1610;color:#e6eee2;padding:8px}
+input{width:100%;margin-bottom:8px}
+.row{display:flex;gap:8px}
+button{cursor:pointer;background:#2f6b3a;border-color:#3f8a4c}
+button:hover{background:#3a8247}
+button.alt{background:#24332a}
+.item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #223024;cursor:pointer}
+.item:last-child{border:none}
+.item input{width:auto;margin:0;transform:scale(1.2)}
+.emo{font-size:22px}
+.nm{flex:1}
+.nm b{display:block;font-size:14px}
+.nm span{font-size:11px;color:#8a9a86}
+.nm span.inseason{color:#9fd88a}
+.ct{font-size:12px;background:#24332a;border-radius:10px;padding:2px 8px;min-width:30px;text-align:center}
+#status{font-size:12px;color:#c9b56a;padding:8px 16px;min-height:16px}
+.pin{font-size:22px;line-height:24px;text-align:center;filter:drop-shadow(0 1px 2px #000)}
+.leaflet-popup-content{font-size:13px;line-height:1.45}
+.leaflet-popup-content h3{margin-bottom:4px}
+.warn{color:#b03a2e}
+.note{font-size:11px;color:#8a9a86;padding:12px 16px}
+@media(max-width:700px){#app{flex-direction:column}#side{width:100%;min-width:0;max-height:45%}}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="side">
+<h1>🌿 Forage Finder</h1>
+<div class="sub">Real research-grade sightings from iNaturalist near any location.</div>
+<div class="box">
+<input id="q" placeholder="City or address, e.g. Wilmington, NC">
+<div class="row">
+<select id="radius"><option value="10">10 km</option><option value="25" selected>25 km</option><option value="50">50 km</option><option value="100">100 km</option></select>
+<button id="go">Search</button>
+<button id="me" class="alt" title="Use my location">📍</button>
+</div>
+</div>
+<div id="status"></div>
+<div class="box">
+<div class="row" style="margin-bottom:8px"><button id="all" class="alt">All</button><button id="none" class="alt">None</button><button id="season" class="alt">In season</button></div>
+<div id="list"></div>
+</div>
+<div class="note">Never eat anything you haven't positively identified. Check land rules: most state and city parks prohibit foraging, while NC game lands allow personal-use picking. A sighting shows where a plant was seen, not permission to pick.</div>
+</div>
+<div id="map"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const ITEMS=[
+{id:'yaupon',emoji:'🍃',name:'Yaupon holly',taxon:'Ilex vomitoria',months:[1,2,3,4,5,6,7,8,9,10,11,12],season:'Year-round',part:'Leaves (tea)',idtip:'Small oval leaves with rounded teeth, smooth gray bark, evergreen.',look:'Its own red berries are toxic; use leaves only.',diff:'Easy'},
+{id:'persimmon',emoji:'🍊',name:'American persimmon',taxon:'Diospyros virginiana',months:[9,10,11],season:'Sep to Nov',part:'Ripe fruit',idtip:'Blocky alligator-skin bark, ping-pong-ball orange fruit.',look:'No dangerous lookalike; eat only when fully soft.',diff:'Easy'},
+{id:'onion',emoji:'🧅',name:'Wild onion / garlic',taxon:'Allium',months:[1,2,3,4,11,12],season:'Late fall to spring',part:'Greens, bulbs',idtip:'Grassy clumps that smell strongly of onion.',look:'Star-of-Bethlehem and other bulbs are toxic: no onion smell, no harvest.',diff:'Easy'},
+{id:'berries',emoji:'🫐',name:'Blackberry / dewberry',taxon:'Rubus',months:[4,5,6,7],season:'Late Apr to Jul',part:'Berries',idtip:'Thorny canes, clustered berries, black when ripe.',look:'Very few dangerous lookalikes.',diff:'Easy'},
+{id:'muscadine',emoji:'🍇',name:'Muscadine grape',taxon:'Vitis rotundifolia',months:[8,9,10],season:'Late Aug to Oct',part:'Grapes',idtip:'Thick-skinned purple or bronze grapes, shiny toothed rounded leaves.',look:'Moonseed is toxic: single crescent seed, smooth-edged leaves.',diff:'Medium'},
+{id:'pawpaw',emoji:'🥭',name:'Pawpaw',taxon:'Asimina triloba',months:[8,9],season:'Aug to Sep',part:'Ripe fruit',idtip:'Large drooping leaves, green fruit in clusters, creek bottoms.',look:'Skin and seeds are not edible; eat the pulp.',diff:'Medium'},
+{id:'chanterelle',emoji:'🍄',name:'Chanterelle',taxon:'Cantharellus',months:[6,7,8],season:'Jun to Aug after rain',part:'Mushroom',idtip:'Orange, fruity smell, false gills running down the stem.',look:'Jack-o-lantern is toxic: clusters on wood, true gills.',diff:'Hard, bring a mentor'}
+];
+const map=L.map('map').setView([35.99,-78.9],10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors | Sightings: iNaturalist'}).addTo(map);
+const layers={};let centerMarker=null,circle=null;
+const nowM=new Date().getMonth()+1;
+const list=document.getElementById('list');
+ITEMS.forEach(it=>{
+  layers[it.id]=L.layerGroup().addTo(map);
+  const inS=it.months.includes(nowM);
+  const d=document.createElement('label');d.className='item';
+  d.innerHTML=`<input type="checkbox" data-id="${it.id}" checked><span class="emo">${it.emoji}</span><span class="nm"><b>${it.name}</b><span class="${inS?'inseason':''}">${it.season}${inS?' · in season now':''}</span></span><span class="ct" id="ct-${it.id}">–</span>`;
+  list.appendChild(d);
+});
+list.addEventListener('change',e=>{const id=e.target.dataset.id;if(!id)return;e.target.checked?layers[id].addTo(map):map.removeLayer(layers[id]);});
+function setAll(fn){document.querySelectorAll('#list input').forEach(cb=>{const it=ITEMS.find(i=>i.id===cb.dataset.id);cb.checked=fn(it);cb.dispatchEvent(new Event('change',{bubbles:true}));});}
+document.getElementById('all').onclick=()=>setAll(()=>true);
+document.getElementById('none').onclick=()=>setAll(()=>false);
+document.getElementById('season').onclick=()=>setAll(it=>it.months.includes(nowM));
+const status=t=>document.getElementById('status').textContent=t;
+const icon=e=>L.divIcon({className:'pin',html:e,iconSize:[24,24],iconAnchor:[12,12]});
+async function load(lat,lng,label){
+  const r=+document.getElementById('radius').value;
+  if(centerMarker)map.removeLayer(centerMarker);if(circle)map.removeLayer(circle);
+  centerMarker=L.marker([lat,lng]).addTo(map).bindPopup(label||'Search center');
+  circle=L.circle([lat,lng],{radius:r*1000,color:'#9fd88a',weight:1,fillOpacity:0.04}).addTo(map);
+  map.fitBounds(circle.getBounds());
+  status('Loading sightings…');
+  let total=0;
+  await Promise.all(ITEMS.map(async it=>{
+    layers[it.id].clearLayers();
+    const ct=document.getElementById('ct-'+it.id);ct.textContent='…';
+    try{
+      const url=`https://api.inaturalist.org/v1/observations?taxon_name=${encodeURIComponent(it.taxon)}&lat=${lat}&lng=${lng}&radius=${r}&quality_grade=research&geo=true&per_page=200&order_by=observed_on`;
+      const js=await (await fetch(url)).json();
+      const obs=(js.results||[]).filter(o=>o.geojson);
+      total+=obs.length;ct.textContent=obs.length;
+      obs.forEach(o=>{
+        const [lo,la]=o.geojson.coordinates;
+        const sp=o.taxon&&o.taxon.preferred_common_name?o.taxon.preferred_common_name:it.name;
+        L.marker([la,lo],{icon:icon(it.emoji)}).bindPopup(`<h3>${it.emoji} ${it.name}</h3><i>${sp}</i><br><b>Season:</b> ${it.season}<br><b>Use:</b> ${it.part}<br><b>ID:</b> ${it.idtip}<br><span class="warn"><b>Lookalike:</b> ${it.look}</span><br><b>Difficulty:</b> ${it.diff}<br><b>Seen:</b> ${o.observed_on||'unknown'}${o.obscured?' (location obscured)':''}<br><a href="https://www.inaturalist.org/observations/${o.id}" target="_blank" rel="noopener">View on iNaturalist</a>`).addTo(layers[it.id]);
+      });
+    }catch(err){ct.textContent='!';}
+  }));
+  status(`${total} sightings within ${r} km of ${label||'your location'}.`);
+}
+async function search(){
+  const q=document.getElementById('q').value.trim();if(!q)return;
+  status('Finding location…');
+  try{
+    const js=await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)).json();
+    if(!js.length){status('Location not found.');return;}
+    load(+js[0].lat,+js[0].lon,js[0].display_name.split(',').slice(0,2).join(','));
+  }catch(e){status('Location lookup failed. Try again.');}
+}
+document.getElementById('go').onclick=search;
+document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')search();});
+document.getElementById('me').onclick=()=>{
+  if(!navigator.geolocation){status('Geolocation not supported.');return;}
+  status('Getting your location…');
+  navigator.geolocation.getCurrentPosition(p=>load(p.coords.latitude,p.coords.longitude,'your location'),()=>status('Location permission denied.'));
+};
+</script>
+</body>
+</html>

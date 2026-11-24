@@ -1,1 +1,11 @@
-# forage-finder
+# 🌿 Forage Finder
+
+Type a city or address (or tap 📍 to use your location), pick a radius, and see real research-grade iNaturalist sightings of forageable plants as emoji pins on a Leaflet/OpenStreetMap map. Toggle each item on or off, or show only what's in season.
+
+**Items:** yaupon holly 🍃, American persimmon 🍊, wild onion/garlic 🧅, blackberry/dewberry 🫐, muscadine 🍇, pawpaw 🥭, chanterelle 🍄. Each pin's popup shows season, part used, ID tips, dangerous lookalikes, difficulty, and a link to the iNaturalist observation.
+
+**Free APIs only:** OpenStreetMap tiles, Nominatim geocoding, iNaturalist observations. No keys needed.
+
+**Safety:** never eat anything you haven't positively identified, and check land rules before picking. A sighting is not permission to forage.
+
+Live: https://mathcodes.github.io/forage-finder/
