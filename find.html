@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Anything by City · Forage Finder</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#10160f;color:#e6eee2;line-height:1.5}
+a{color:#9fd88a}
+.hero{background:linear-gradient(135deg,#1d3322,#18221a 60%,#1b2a33);padding:36px 20px 80px;text-align:center}
+.top{max-width:860px;margin:0 auto 18px;text-align:left}
+.btn{display:inline-block;background:#24332a;border:1px solid #33463a;color:#e6eee2;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:13px}
+h1{font-size:32px;color:#9fd88a;line-height:1.15;margin-bottom:8px}
+.hero p{color:#c3d1bf;max-width:540px;margin:0 auto}
+.panel{background:#18221a;border:1px solid #2a3a2c;border-radius:14px;max-width:860px;width:calc(100% - 32px);margin:-54px auto 20px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.fields{display:grid;grid-template-columns:2fr 1.3fr auto;gap:10px;align-items:end}
+label{display:block;font-size:12px;color:#8a9a86;margin-bottom:4px}
+input{width:100%;font:inherit;font-size:15px;border-radius:8px;border:1px solid #33463a;background:#0f1610;color:#e6eee2;padding:11px}
+input:focus{outline:none;border-color:#9fd88a}
+.go{background:#2f6b3a;border:1px solid #3f8a4c;color:#e6eee2;font:inherit;font-size:15px;font-weight:600;border-radius:8px;padding:11px 18px;cursor:pointer;height:46px}
+.wrapq{position:relative}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#0f1610;border:1px solid #33463a;border-radius:8px;z-index:10;display:none;max-height:320px;overflow-y:auto}
+.sugg div{display:flex;gap:10px;align-items:center;padding:8px 10px;cursor:pointer;font-size:14px}
+.sugg div:hover,.sugg div.on{background:#24332a}
+.sugg img{width:36px;height:36px;border-radius:6px;object-fit:cover;background:#24332a;flex-shrink:0}
+.sugg span{font-size:12px;color:#8a9a86;font-style:italic}
+.opts{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:#c3d1bf}
+.opts input{width:auto;margin-right:6px}
+.chips{margin-top:10px;font-size:12px;color:#8a9a86}
+.chips button{background:#0f1610;border:1px solid #2a3a2c;color:#c3d1bf;border-radius:14px;padding:3px 10px;margin:4px 4px 0 0;font:inherit;font-size:12px;cursor:pointer}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+#status{font-size:14px;color:#c9b56a;margin:4px 0 14px;min-height:20px}
+.sel{display:flex;gap:14px;align-items:center;background:#18221a;border:1px solid #2a3a2c;border-radius:12px;padding:12px;margin-bottom:14px}
+.sel img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#24332a}
+.sel h2{font-size:18px;color:#9fd88a}
+.sel i{color:#8a9a86;font-size:13px}
+.city{background:#18221a;border:1px solid #2a3a2c;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.ch:hover{background:#1d2b20}
+.ch h3{font-size:16px}
+.ch .sub{font-size:12px;color:#8a9a86}
+.cnt{background:#2f6b3a;color:#e6eee2;border-radius:14px;padding:3px 11px;font-size:13px;font-weight:600;white-space:nowrap}
+.spots{display:none;border-top:1px solid #223024;padding:6px 14px 12px}
+.city.open .spots{display:block}
+.spot{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #1d2a1f;font-size:13px}
+.spot:last-child{border:none}
+.spot span{color:#8a9a86;white-space:nowrap}
+.maplink{display:inline-block;margin-top:8px;font-size:12px}
+.empty{color:#8a9a86;font-size:14px;text-align:center;padding:30px}
+@media(max-width:640px){.fields{grid-template-columns:1fr}.go{width:100%}h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="hero">
+<div class="top"><a class="btn" href="./">← Back to the map</a></div>
+<h1>🔍 Find anything, by city</h1>
+<p>Type any plant, mushroom or fruit. We'll list every place it's been spotted, grouped by city.</p>
+</div>
+
+<div class="panel">
+<div class="fields">
+<div class="wrapq"><label for="q">What are you looking for?</label><input id="q" placeholder="e.g. chanterelle, pawpaw, ramps" autocomplete="off"><div class="sugg" id="sugg"></div></div>
+<div><label for="area">Where?</label><input id="area" value="North Carolina" placeholder="State, county or city"></div>
+<button class="go" id="go">Search</button>
+</div>
+<div class="opts"><label style="margin:0;color:#c3d1bf"><input type="checkbox" id="research" checked>Verified sightings only</label><label style="margin:0;color:#c3d1bf"><input type="checkbox" id="recent">Last 3 years only</label></div>
+<div class="chips">Try: <button>chanterelle</button><button>pawpaw</button><button>muscadine</button><button>chicken of the woods</button><button>wineberry</button><button>yaupon</button><button>ramps</button></div>
+</div>
+
+<div class="wrap">
+<div id="status"></div>
+<div id="selected"></div>
+<div id="results"></div>
+</div>
+
+<script>
+const API='https://api.inaturalist.org/v1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const status=t=>$('status').textContent=t;
+let chosen=null,suggList=[],hi=-1,timer=null;
+
+// --- autocomplete for "what" ---
+$('q').addEventListener('input',()=>{chosen=null;clearTimeout(timer);const v=$('q').value.trim();if(v.length<2){hideSugg();return;}timer=setTimeout(()=>suggest(v),250);});
+$('q').addEventListener('keydown',e=>{
+  const box=$('sugg');if(box.style.display!=='block'){if(e.key==='Enter')run();return;}
+  if(e.key==='ArrowDown'){hi=Math.min(hi+1,suggList.length-1);paint();e.preventDefault();}
+  else if(e.key==='ArrowUp'){hi=Math.max(hi-1,0);paint();e.preventDefault();}
+  else if(e.key==='Enter'){if(hi>=0)pick(suggList[hi]);else{hideSugg();run();}e.preventDefault();}
+  else if(e.key==='Escape')hideSugg();
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.wrapq'))hideSugg();});
+async function suggest(v){
+  try{
+    const js=await (await fetch(`${API}/taxa/autocomplete?q=${encodeURIComponent(v)}&per_page=7`)).json();
+    suggList=js.results||[];hi=-1;
+    const box=$('sugg');
+    if(!suggList.length){hideSugg();return;}
+    box.innerHTML=suggList.map((t,i)=>`<div data-i="${i}"><img src="${esc(t.default_photo?t.default_photo.square_url:'')}" alt=""><div style="display:block;padding:0"><b>${esc(t.preferred_common_name||t.name)}</b><br><span>${esc(t.name)} · ${esc(t.rank)}</span></div></div>`).join('');
+    box.querySelectorAll('[data-i]').forEach(d=>d.onclick=()=>pick(suggList[+d.dataset.i]));
+    box.style.display='block';
+  }catch(e){}
+}
+function paint(){$('sugg').querySelectorAll('[data-i]').forEach((d,i)=>d.classList.toggle('on',i===hi));}
+function hideSugg(){$('sugg').style.display='none';hi=-1;}
+function pick(t){chosen=t;$('q').value=t.preferred_common_name||t.name;hideSugg();run();}
+document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{chosen=null;$('q').value=b.textContent;run();});
+$('go').onclick=()=>{hideSugg();run();};
+$('area').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+
+// --- city parsing ---
+const STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'District of Columbia'};
+const NAME2AB=Object.fromEntries(Object.entries(STATES).map(([a,n])=>[n.toLowerCase(),a]));
+function stateOf(part){
+  const p=part.trim();
+  const m=p.match(/^([A-Z]{2})(\s+\d{5}(-\d{4})?)?$/);if(m&&STATES[m[1]])return m[1];
+  const n=p.replace(/\s+\d{5}.*$/,'').toLowerCase();return NAME2AB[n]||null;
+}
+function cityOf(guess){
+  if(!guess)return {city:'Unlisted location',spot:'Location not given'};
+  const parts=guess.split(',').map(s=>s.trim()).filter(Boolean).filter(p=>!/^(US|USA|United States)$/i.test(p));
+  let si=parts.findIndex(p=>stateOf(p));
+  const st=si>=0?stateOf(parts[si]):'';
+  if(si<0)si=parts.length;
+  let city=parts[si-1]||parts[0]||'Unlisted location';
+  if(/^\d/.test(city)&&parts[si-2])city=parts[si-2];
+  const spot=parts.slice(0,Math.max(si-1,1)).join(', ')||city;
+  return {city:st?`${city}, ${st}`:city,spot:spot===city?'':spot};
+}
+
+// --- search ---
+async function resolveTaxon(q){
+  if(chosen)return chosen;
+  const js=await (await fetch(`${API}/taxa/autocomplete?q=${encodeURIComponent(q)}&per_page=1`)).json();
+  return (js.results||[])[0]||null;
+}
+async function resolvePlace(a){
+  if(!a)return null;
+  const js=await (await fetch(`${API}/places/autocomplete?q=${encodeURIComponent(a)}&per_page=5`)).json();
+  const r=js.results||[];
+  return r.find(p=>p.display_name&&p.display_name.toLowerCase().startsWith(a.toLowerCase()))||r[0]||null;
+}
+async function run(){
+  const q=$('q').value.trim();if(!q){status('Type something to look for.');return;}
+  $('results').innerHTML='';$('selected').innerHTML='';
+  status('Searching…');
+  try{
+    const [taxon,place]=await Promise.all([resolveTaxon(q),resolvePlace($('area').value.trim())]);
+    if(!taxon){status(`Nothing called "${q}" found. Try another name.`);return;}
+    const photo=taxon.default_photo?taxon.default_photo.medium_url||taxon.default_photo.square_url:'';
+    $('selected').innerHTML=`<div class="sel">${photo?`<img src="${esc(photo)}" alt="">`:''}<div><h2>${esc(taxon.preferred_common_name||taxon.name)}</h2><i>${esc(taxon.name)}</i><br><a href="https://www.inaturalist.org/taxa/${taxon.id}" target="_blank" rel="noopener" style="font-size:12px">About this species ↗</a></div></div>`;
+    if($('area').value.trim()&&!place){status(`Couldn't find the place "${$('area').value}". Try a state or county name.`);return;}
+    let params=`taxon_id=${taxon.id}&per_page=200&order_by=observed_on&geo=true`;
+    if(place)params+=`&place_id=${place.id}`;
+    if($('research').checked)params+='&quality_grade=research';
+    if($('recent').checked){const d=new Date();d.setFullYear(d.getFullYear()-3);params+=`&d1=${d.toISOString().slice(0,10)}`;}
+    status('Loading sightings…');
+    let all=[],total=0;
+    for(let page=1;page<=5;page++){
+      const js=await (await fetch(`${API}/observations?${params}&page=${page}`)).json();
+      total=js.total_results||0;all=all.concat(js.results||[]);
+      status(`Loading sightings… ${all.length} of ${Math.min(total,1000)}`);
+      if(all.length>=total||!(js.results||[]).length)break;
+    }
+    const where=place?place.display_name:'everywhere';
+    if(!all.length){status('');$('results').innerHTML=`<div class="empty">No sightings of ${esc(taxon.preferred_common_name||taxon.name)} in ${esc(where)} yet.</div>`;return;}
+    const groups={};
+    all.forEach(o=>{
+      const {city,spot}=cityOf(o.place_guess);
+      const g=groups[city]||(groups[city]={city,n:0,latest:'',spots:{}});
+      g.n++;if((o.observed_on||'')>g.latest)g.latest=o.observed_on||'';
+      const key=spot||'(around town)';
+      const s=g.spots[key]||(g.spots[key]={name:key,n:0,latest:'',id:o.id});
+      s.n++;if((o.observed_on||'')>=s.latest){s.latest=o.observed_on||'';s.id=o.id;}
+    });
+    const cities=Object.values(groups).sort((a,b)=>b.n-a.n||a.city.localeCompare(b.city));
+    status(`${all.length} sightings in ${cities.length} cities${total>all.length?` (showing the latest ${all.length} of ${total.toLocaleString()})`:''} · ${where}`);
+    $('results').innerHTML=cities.map((c,i)=>{
+      const spots=Object.values(c.spots).sort((a,b)=>b.n-a.n);
+      return `<div class="city${i===0?' open':''}"><div class="ch"><div><h3>📍 ${esc(c.city)}</h3><div class="sub">${spots.length} spot${spots.length>1?'s':''} · last seen ${esc(c.latest||'unknown')}</div></div><span class="cnt">${c.n}</span></div>
+      <div class="spots">${spots.map(s=>`<div class="spot"><a href="https://www.inaturalist.org/observations/${s.id}" target="_blank" rel="noopener">${esc(s.name)}</a><span>${s.n} · ${esc(s.latest||'?')}</span></div>`).join('')}
+      <a class="maplink" href="./?q=${encodeURIComponent(c.city)}">🗺️ Open ${esc(c.city)} on the map</a></div></div>`;
+    }).join('');
+    $('results').querySelectorAll('.ch').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('open'));
+  }catch(e){status('Search failed. Check your connection and try again.');}
+}
+const pq=new URLSearchParams(location.search);
+if(pq.get('area'))$('area').value=pq.get('area');
+if(pq.get('q')){$('q').value=pq.get('q');run();}
+</script>
+</body>
+</html>

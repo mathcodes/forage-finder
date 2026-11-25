@@ -10,4 +10,6 @@ Type a city or address (or tap 📍 to use your location), pick a radius, and se
 
 **Safety:** never eat anything you haven't positively identified, and check land rules before picking. A sighting is not permission to forage.
 
+**Find anything (find.html):** type any plant, mushroom or fruit plus a state, county or city, and get every iNaturalist sighting listed by city, with specific spots and dates.
+
 Live: https://mathcodes.github.io/forage-finder/
